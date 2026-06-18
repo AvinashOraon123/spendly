@@ -21,7 +21,7 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="hero-cta">Create free account</a>
-            <a href="#" class="hero-cta">See how it works</a>
+            <a href="#" id="how-open" class="hero-cta">See how it works</a>
         </div>
     </div>
     <div class="hero-visual">
@@ -71,6 +71,63 @@
         </div>
     </div>
 </section>
+
+<div id="how-modal" class="how-modal" hidden aria-hidden="true">
+    <div class="how-modal-backdrop" data-close></div>
+    <div class="how-modal-dialog" role="dialog" aria-modal="true" aria-label="See how it works">
+        <button type="button" class="how-modal-close" data-close aria-label="Close">&times;</button>
+        <div class="how-modal-video">
+            <iframe id="how-video"
+                    title="See how Spendly works"
+                    src=""
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+(function () {
+    var YOUTUBE_SRC = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0";
+    var modal  = document.getElementById("how-modal");
+    var openBtn = document.getElementById("how-open");
+    var video  = document.getElementById("how-video");
+
+    function openModal(e) {
+        if (e) e.preventDefault();
+        video.src = YOUTUBE_SRC;
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+        // Clearing src is the standard vanilla way to stop a YouTube embed
+        // without pulling in the IFrame Player API.
+        video.src = "";
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+
+    openBtn.addEventListener("click", openModal);
+
+    modal.addEventListener("click", function (e) {
+        if (e.target && e.target.hasAttribute("data-close")) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hidden) {
+            closeModal();
+        }
+    });
+})();
+</script>
+{% endblock %}
 
 <section class="features">
     <div class="features-inner">
