@@ -1,4 +1,4 @@
-# CLAUDE.md
+# FREEBUFF.md
 
 ## Project overview
 

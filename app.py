@@ -4,7 +4,7 @@ import sqlite3
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, find_user_by_email, get_db, init_db, seed_db
+from database.db import create_user, find_user_by_email, find_user_by_id, get_db, init_db, seed_db
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
@@ -23,6 +23,9 @@ def landing():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if session.get("user_id"):
+        return redirect(url_for("profile"))
+
     context = {"error": None, "form_data": {"name": "", "email": ""}}
 
     if request.method == "POST":
@@ -64,6 +67,9 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("user_id"):
+        return redirect(url_for("profile"))
+
     context = {"error": None, "form_data": {"email": ""}}
 
     if request.method == "POST":
@@ -107,9 +113,53 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.context_processor
+def inject_user():
+    user_id = session.get("user_id")
+    if user_id:
+        user = find_user_by_id(user_id)
+        return {"current_user": user}
+    return {"current_user": None}
+
+
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    user = find_user_by_id(user_id)
+
+    # Hardcoded data for Step 4 — no DB queries
+    profile_data = {
+        "user": user,
+        "stats": {
+            "total_spent": 286.93,
+            "transaction_count": 8,
+            "top_category": "Food",
+        },
+        "transactions": [
+            {"date": "2026-08-17", "description": "Dinner with friends", "category": "Food", "amount": 22.75},
+            {"date": "2026-08-15", "description": "Cloud backup subscription", "category": "Other", "amount": 9.99},
+            {"date": "2026-08-12", "description": "New running shoes", "category": "Shopping", "amount": 67.40},
+            {"date": "2026-08-10", "description": "Movie tickets", "category": "Entertainment", "amount": 15.00},
+            {"date": "2026-08-08", "description": "Pharmacy restock", "category": "Health", "amount": 24.30},
+            {"date": "2026-08-05", "description": "Internet bill", "category": "Bills", "amount": 89.99},
+            {"date": "2026-08-04", "description": "Weekly metro card top-up", "category": "Transport", "amount": 45.00},
+            {"date": "2026-08-02", "description": "Lunch at the corner cafe", "category": "Food", "amount": 12.50},
+        ],
+        "categories": [
+            {"name": "Food", "total": 35.25, "percent": 12},
+            {"name": "Bills", "total": 89.99, "percent": 31},
+            {"name": "Shopping", "total": 67.40, "percent": 23},
+            {"name": "Transport", "total": 45.00, "percent": 16},
+            {"name": "Health", "total": 24.30, "percent": 8},
+            {"name": "Entertainment", "total": 15.00, "percent": 5},
+            {"name": "Other", "total": 9.99, "percent": 3},
+        ],
+    }
+
+    return render_template("profile.html", **profile_data)
 
 
 @app.route("/expenses/add")
