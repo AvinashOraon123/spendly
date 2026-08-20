@@ -67,6 +67,23 @@ def create_user(name: str, email: str, password: str) -> int:
         conn.close()
 
 
+def find_user_by_email(email: str):
+    """Return the user row matching `email`, or None if no match.
+
+    The caller is expected to pass an email that is already trimmed and
+    lowercased so it lines up with what `create_user` stored.
+    """
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, name, email, password_hash FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+        return row
+    finally:
+        conn.close()
+
+
 def seed_db():
     """Insert demo user + 8 sample expenses once. Idempotent."""
     conn = get_db()
