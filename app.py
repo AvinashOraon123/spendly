@@ -1,8 +1,13 @@
-from flask import Flask, render_template
+import re
+import sqlite3
 
-from database.db import get_db, init_db, seed_db
+from flask import Flask, redirect, render_template, request, url_for
+
+from database.db import create_user, get_db, init_db, seed_db
 
 app = Flask(__name__)
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 # ------------------------------------------------------------------ #
@@ -14,9 +19,45 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    context = {"error": None, "form_data": {"name": "", "email": ""}}
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+
+        error = None
+        if not name:
+            error = "Please enter your name."
+        elif len(name) < 2:
+            error = "Name must be at least 2 characters."
+        elif not email:
+            error = "Please enter your email."
+        elif not EMAIL_RE.match(email):
+            error = "Please enter a valid email address."
+        elif not password:
+            error = "Please enter a password."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
+        elif len(password) > 128:
+            error = "Password is too long."
+
+        if error is None:
+            try:
+                create_user(name, email, password)
+            except sqlite3.IntegrityError:
+                context["error"] = "An account with this email already exists."
+                context["form_data"] = {"name": name, "email": email}
+                return render_template("register.html", **context), 200
+            else:
+                return redirect(url_for("login"))
+
+        context["error"] = error
+        context["form_data"] = {"name": name, "email": email}
+
+    return render_template("register.html", **context), 200
 
 
 @app.route("/login")

@@ -48,6 +48,25 @@ def init_db():
         conn.close()
 
 
+def create_user(name: str, email: str, password: str) -> int:
+    """Insert a new user. Returns new user's id.
+
+    Raises:
+        sqlite3.IntegrityError: if email already exists.
+    """
+    conn = get_db()
+    try:
+        password_hash = generate_password_hash(password)
+        cur = conn.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, password_hash),
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
 def seed_db():
     """Insert demo user + 8 sample expenses once. Idempotent."""
     conn = get_db()
