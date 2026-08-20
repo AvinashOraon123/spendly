@@ -67,6 +67,19 @@ def create_user(name: str, email: str, password: str) -> int:
         conn.close()
 
 
+def find_user_by_id(user_id: int):
+    """Return the user row matching `user_id`, or None if no match."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        return row
+    finally:
+        conn.close()
+
+
 def find_user_by_email(email: str):
     """Return the user row matching `email`, or None if no match.
 
