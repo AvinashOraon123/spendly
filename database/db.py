@@ -97,6 +97,132 @@ def find_user_by_email(email: str):
         conn.close()
 
 
+def get_total_spent(user_id: int) -> float:
+    """Return the sum of all expense amounts for `user_id`.
+
+    Returns 0.0 when the user has no expenses.
+    """
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        return float(row[0])
+    finally:
+        conn.close()
+
+
+def get_transaction_count(user_id: int) -> int:
+    """Return the number of expenses recorded for `user_id`."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM expenses WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        return int(row[0])
+    finally:
+        conn.close()
+
+
+def get_top_category(user_id: int):
+    """Return the category with the highest total spend for `user_id`.
+
+    Returns the category name as a string, or None if the user has no expenses.
+    """
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT category FROM expenses "
+            "WHERE user_id = ? "
+            "GROUP BY category "
+            "ORDER BY SUM(amount) DESC, category ASC "
+            "LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        return row["category"] if row else None
+    finally:
+        conn.close()
+
+
+def list_recent_transactions(user_id: int, limit: int = 10) -> list:
+    """Return up to `limit` of the user's most recent expenses.
+
+    Sorted newest first by date, then by id (insertion order) as a tiebreaker.
+    Each entry is a plain dict with keys: date, description, category, amount.
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT date, description, category, amount "
+            "FROM expenses "
+            "WHERE user_id = ? "
+            "ORDER BY date DESC, id DESC "
+            "LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+        return [
+            {
+                "date": row["date"],
+                "description": row["description"] or "",
+                "category": row["category"],
+                "amount": float(row["amount"]),
+            }
+            for row in rows
+        ]
+    finally:
+        conn.close()
+
+
+def get_category_breakdown(user_id: int) -> list:
+    """Return per-category spend totals for `user_id`, with percentage shares.
+
+    Sorted by total descending. Each entry is a dict with keys:
+        name   — category name (str)
+        total  — total spend in that category (float)
+        percent — integer share of total spend (0–100), with the largest
+                  category absorbing the rounding remainder so percentages
+                  sum to <=100.
+
+    Returns an empty list when the user has no expenses.
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT category, SUM(amount) AS total "
+            "FROM expenses "
+            "WHERE user_id = ? "
+            "GROUP BY category "
+            "ORDER BY total DESC",
+            (user_id,),
+        ).fetchall()
+        if not rows:
+            return []
+
+        grand_total = sum(float(row["total"]) for row in rows)
+        if grand_total <= 0:
+            return [{"name": row["category"], "total": 0.0, "percent": 0}
+                    for row in rows]
+
+        breakdown = []
+        assigned = 0
+        for index, row in enumerate(rows):
+            name = row["category"]
+            total = float(row["total"])
+            if index == 0:
+                # Largest category absorbs the rounding remainder.
+                percent = round((total / grand_total) * 100)
+            else:
+                percent = int((total / grand_total) * 100)
+                assigned += percent
+            breakdown.append({"name": name, "total": total, "percent": percent})
+
+        return breakdown
+    finally:
+        conn.close()
+
+
 def seed_db():
     """Insert demo user + 8 sample expenses once. Idempotent."""
     conn = get_db()
