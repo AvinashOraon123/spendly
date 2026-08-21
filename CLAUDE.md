@@ -63,7 +63,34 @@ spendly/
 
 ---
 
-## Commands
+## Slash Commands
+
+Available via `.freebuff/commands.json`:
+
+### Commands
+| Command | Description | Usage |
+|---|---|---|
+| `/create-spec-doc` | Create a spec file and feature branch for the next Spendly step | `/create-spec-doc 2 registration` |
+| `/seed-expense` | Seed realistic dummy expenses for a specific user | `/seed-expense 1 50 6` |
+| `/seed-user` | Create a single dummy user in the database | `/seed-user` |
+
+### Skills
+| Skill | Description |
+|---|---|
+| `spendly-ui-designer` | Designs and generates modern, production-ready UI for Spendly — fintech-style pages and components with Lucide icons |
+
+### Specs
+| Spec | Step | Description |
+|---|---|---|
+| `01-database-setup` | 1 | SQLite data layer foundation |
+| `02-registration` | 2 | User registration with hashed passwords |
+| `03-login-and-logout` | 3 | Session-based authentication |
+| `04-profile-page` | 4 | Static profile page UI |
+| `05-backend-routes-for-profile-page` | 5 | Live DB queries for profile |
+
+---
+
+## Shell Commands
 ```bash
 # Setup
 python -m venv venv
