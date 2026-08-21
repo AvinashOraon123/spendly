@@ -4,7 +4,7 @@ import sqlite3
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, find_user_by_email, find_user_by_id, get_db, init_db, seed_db
+from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_top_category, get_total_spent, get_transaction_count, init_db, list_recent_transactions, seed_db
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
@@ -130,33 +130,16 @@ def profile():
 
     user = find_user_by_id(user_id)
 
-    # Hardcoded data for Step 4 — no DB queries
+    # Profile data sourced live from the DB — Step 5
     profile_data = {
         "user": user,
         "stats": {
-            "total_spent": 286.93,
-            "transaction_count": 8,
-            "top_category": "Food",
+            "total_spent": get_total_spent(user_id),
+            "transaction_count": get_transaction_count(user_id),
+            "top_category": get_top_category(user_id),
         },
-        "transactions": [
-            {"date": "2026-08-17", "description": "Dinner with friends", "category": "Food", "amount": 22.75},
-            {"date": "2026-08-15", "description": "Cloud backup subscription", "category": "Other", "amount": 9.99},
-            {"date": "2026-08-12", "description": "New running shoes", "category": "Shopping", "amount": 67.40},
-            {"date": "2026-08-10", "description": "Movie tickets", "category": "Entertainment", "amount": 15.00},
-            {"date": "2026-08-08", "description": "Pharmacy restock", "category": "Health", "amount": 24.30},
-            {"date": "2026-08-05", "description": "Internet bill", "category": "Bills", "amount": 89.99},
-            {"date": "2026-08-04", "description": "Weekly metro card top-up", "category": "Transport", "amount": 45.00},
-            {"date": "2026-08-02", "description": "Lunch at the corner cafe", "category": "Food", "amount": 12.50},
-        ],
-        "categories": [
-            {"name": "Food", "total": 35.25, "percent": 12},
-            {"name": "Bills", "total": 89.99, "percent": 31},
-            {"name": "Shopping", "total": 67.40, "percent": 23},
-            {"name": "Transport", "total": 45.00, "percent": 16},
-            {"name": "Health", "total": 24.30, "percent": 8},
-            {"name": "Entertainment", "total": 15.00, "percent": 5},
-            {"name": "Other", "total": 9.99, "percent": 3},
-        ],
+        "transactions": list_recent_transactions(user_id),
+        "categories": get_category_breakdown(user_id),
     }
 
     return render_template("profile.html", **profile_data)
