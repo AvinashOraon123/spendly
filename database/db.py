@@ -209,7 +209,7 @@ def list_recent_transactions(
     conn = get_db()
     try:
         rows = conn.execute(
-            f"SELECT date, description, category, amount "
+            f"SELECT id, date, description, category, amount "
             f"FROM expenses WHERE {where} "
             "ORDER BY date DESC, id DESC "
             "LIMIT ?",
@@ -217,6 +217,7 @@ def list_recent_transactions(
         ).fetchall()
         return [
             {
+                "id": row["id"],
                 "date": row["date"],
                 "description": row["description"] or "",
                 "category": row["category"],
@@ -293,6 +294,32 @@ def insert_expense(user_id: int, amount: float, category: str, date: str, descri
         )
         conn.commit()
         return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def get_expense_by_id(expense_id: int, user_id: int):
+    """Return the expense row matching `expense_id` and `user_id`, or None if no match."""
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, amount, category, date, description FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+        return row
+    finally:
+        conn.close()
+
+
+def update_expense(expense_id: int, user_id: int, amount: float, category: str, date: str, description: str | None):
+    """Update an existing expense. Scoped to `user_id` for safety."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? WHERE id = ? AND user_id = ?",
+            (amount, category, date, description, expense_id, user_id),
+        )
+        conn.commit()
     finally:
         conn.close()
 

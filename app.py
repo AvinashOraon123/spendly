@@ -2,10 +2,10 @@ import re
 import sqlite3
 from datetime import date, datetime
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for, abort
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_top_category, get_total_spent, get_transaction_count, init_db, insert_expense, list_recent_transactions, seed_db
+from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_expense_by_id, get_top_category, get_total_spent, get_transaction_count, init_db, insert_expense, list_recent_transactions, seed_db, update_expense
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
@@ -291,9 +291,50 @@ def add_expense():
     return render_template("add_expense.html", **context)
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        abort(404)
+
+    context = {"form_data": {}}
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount") or ""
+        category = request.form.get("category") or ""
+        date_val = request.form.get("date") or ""
+        description = (request.form.get("description") or "").strip()
+
+        error, amount = _validate_expense_form(amount_raw, category, date_val)
+
+        if error:
+            flash(error, "error")
+            context["form_data"] = {
+                "amount": amount_raw,
+                "category": category,
+                "date": date_val,
+                "description": description,
+            }
+            return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES, **context)
+
+        # Success: Update in DB
+        update_expense(
+            expense_id=id,
+            user_id=user_id,
+            amount=amount,
+            category=category,
+            date=date_val,
+            description=description if description else None,
+        )
+        flash("Expense updated successfully!", "success")
+        return redirect(url_for("profile"))
+
+    # GET request
+    return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES, **context)
 
 
 @app.route("/expenses/<int:id>/delete")
