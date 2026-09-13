@@ -183,6 +183,23 @@
     color: var(--on-accent);
 }
 
+.btn-delete {
+    font-size: 0.75rem;
+    color: var(--danger);
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: var(--on-accent);
+}
+
 .profile-table td {
     padding: 0.85rem 0;
     border-bottom: 1px solid var(--border-soft);

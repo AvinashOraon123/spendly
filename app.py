@@ -5,7 +5,7 @@ from datetime import date, datetime
 from flask import Flask, flash, redirect, render_template, request, session, url_for, abort
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_expense_by_id, get_top_category, get_total_spent, get_transaction_count, init_db, insert_expense, list_recent_transactions, seed_db, update_expense
+from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_expense_by_id, get_top_category, get_total_spent, get_transaction_count, init_db, insert_expense, list_recent_transactions, seed_db, update_expense, delete_expense as db_delete_expense
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
@@ -337,9 +337,21 @@ def edit_expense(id):
     return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES, **context)
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    # Verify ownership
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        abort(404)
+
+    # Delete expense
+    db_delete_expense(id, user_id)
+    flash("Expense deleted successfully!", "success")
+    return redirect(url_for("profile"))
 
 
 if __name__ == "__main__":
