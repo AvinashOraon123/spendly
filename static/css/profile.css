@@ -163,6 +163,26 @@
     text-align: right;
 }
 
+.profile-td-right {
+    text-align: right;
+}
+
+.btn-edit {
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
 .profile-table td {
     padding: 0.85rem 0;
     border-bottom: 1px solid var(--border-soft);
