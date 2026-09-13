@@ -23,6 +23,46 @@
             </div>
         </div>
 
+        {# ── Date Filter Bar ────────────────────────────────────── #}
+        <section class="profile-filter-bar" aria-label="Date range filter">
+            <div class="profile-filter-presets" role="group" aria-label="Quick ranges">
+                <a class="filter-pill {% if active_preset == 'this_month' %}is-active{% endif %}"
+                   href="{{ url_for('profile', date_from=this_month_from, date_to=today) }}">
+                    <i data-lucide="calendar"></i>
+                    <span>This Month</span>
+                </a>
+                <a class="filter-pill {% if active_preset == 'last_3_months' %}is-active{% endif %}"
+                   href="{{ url_for('profile', date_from=last_3_from, date_to=today) }}">
+                    <i data-lucide="calendar-days"></i>
+                    <span>Last 3 Months</span>
+                </a>
+                <a class="filter-pill {% if active_preset == 'last_6_months' %}is-active{% endif %}"
+                   href="{{ url_for('profile', date_from=last_6_from, date_to=today) }}">
+                    <i data-lucide="calendar-range"></i>
+                    <span>Last 6 Months</span>
+                </a>
+                <a class="filter-pill {% if active_preset == 'all_time' %}is-active{% endif %}"
+                   href="{{ url_for('profile') }}">
+                    <i data-lucide="infinity"></i>
+                    <span>All Time</span>
+                </a>
+            </div>
+
+            <form class="profile-filter-custom" method="get" action="{{ url_for('profile') }}">
+                <div class="form-group">
+                    <label for="date_from">From</label>
+                    <input class="form-input" type="date" id="date_from" name="date_from"
+                           value="{{ date_from }}" max="{{ today }}">
+                </div>
+                <div class="form-group">
+                    <label for="date_to">To</label>
+                    <input class="form-input" type="date" id="date_to" name="date_to"
+                           value="{{ date_to }}" max="{{ today }}">
+                </div>
+                <button type="submit" class="btn-submit">Apply</button>
+            </form>
+        </section>
+
         {# ── Summary Stats ──────────────────────────────────────── #}
         <div class="profile-stats">
             <div class="profile-stat-card">

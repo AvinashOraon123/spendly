@@ -21,6 +21,7 @@
 
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', system-ui, sans-serif;
+    --on-accent: #ffffff;
 
     --max-width: 1200px;
     --auth-width: 440px;

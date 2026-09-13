@@ -1,7 +1,8 @@
 import re
 import sqlite3
+from datetime import date, datetime
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
 from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_top_category, get_total_spent, get_transaction_count, init_db, list_recent_transactions, seed_db
@@ -10,6 +11,30 @@ app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+# ------------------------------------------------------------------ #
+# Date filter helpers                                                 #
+# ------------------------------------------------------------------ #
+
+def _parse_iso_date(value):
+    """Return a 'YYYY-MM-DD' string or None if missing/malformed."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return None
+
+
+def _months_ago(d: date, n: int) -> date:
+    """Calendar subtract — handles January wrap (e.g. n=1 on Jan 15 → Dec 15 prev year)."""
+    year = d.year
+    month = d.month - n
+    while month <= 0:
+        month += 12
+        year -= 1
+    return d.replace(year=year, month=month)
 
 
 # ------------------------------------------------------------------ #
@@ -130,16 +155,63 @@ def profile():
 
     user = find_user_by_id(user_id)
 
-    # Profile data sourced live from the DB — Step 5
+    # Date filter — read query params, validate, normalize to YYYY-MM-DD
+    raw_from = request.args.get("date_from")
+    raw_to = request.args.get("date_to")
+    date_from = _parse_iso_date(raw_from)
+    date_to = _parse_iso_date(raw_to)
+
+    # If either side was supplied but malformed, drop both for predictable behavior.
+    if (raw_from and date_from is None) or (raw_to and date_to is None):
+        date_from = None
+        date_to = None
+
+    # Inverted range — flash and fall back to unfiltered.
+    if date_from and date_to and date_from > date_to:
+        flash("Start date must be before end date.", "error")
+        date_from = None
+        date_to = None
+
+    # Preset date calculations (server local). Used both for queries and
+    # for building the preset pill links in the template.
+    today = date.today()
+    today_iso = today.isoformat()
+    this_month_from = today.replace(day=1).isoformat()
+    last_3_from = _months_ago(today, 3).isoformat()
+    last_6_from = _months_ago(today, 6).isoformat()
+
+    # Determine which preset (if any) is active so the template can highlight it.
+    active_preset = None
+    if date_from is None and date_to is None:
+        active_preset = "all_time"
+    else:
+        for name, f, t in (
+            ("this_month", this_month_from, today_iso),
+            ("last_3_months", last_3_from, today_iso),
+            ("last_6_months", last_6_from, today_iso),
+        ):
+            if date_from == f and date_to == t:
+                active_preset = name
+                break
+
+    # Profile data sourced live from the DB — Step 5 + Step 6 filter.
     profile_data = {
         "user": user,
         "stats": {
-            "total_spent": get_total_spent(user_id),
-            "transaction_count": get_transaction_count(user_id),
-            "top_category": get_top_category(user_id),
+            "total_spent": get_total_spent(user_id, date_from, date_to),
+            "transaction_count": get_transaction_count(user_id, date_from, date_to),
+            "top_category": get_top_category(user_id, date_from, date_to),
         },
-        "transactions": list_recent_transactions(user_id),
-        "categories": get_category_breakdown(user_id),
+        "transactions": list_recent_transactions(user_id, date_from=date_from, date_to=date_to),
+        "categories": get_category_breakdown(user_id, date_from, date_to),
+        # Filter state for the template
+        "date_from": date_from or "",
+        "date_to": date_to or "",
+        "active_preset": active_preset,
+        "today": today_iso,
+        "this_month_from": this_month_from,
+        "last_3_from": last_3_from,
+        "last_6_from": last_6_from,
     }
 
     return render_template("profile.html", **profile_data)
