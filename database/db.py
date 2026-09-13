@@ -324,6 +324,19 @@ def update_expense(expense_id: int, user_id: int, amount: float, category: str, 
         conn.close()
 
 
+def delete_expense(expense_id: int, user_id: int):
+    """Delete an existing expense. Scoped to `user_id` for safety."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def seed_db():
     """Insert demo user + 8 sample expenses once. Idempotent."""
     conn = get_db()
