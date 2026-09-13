@@ -5,12 +5,14 @@ from datetime import date, datetime
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_top_category, get_total_spent, get_transaction_count, init_db, list_recent_transactions, seed_db
+from database.db import create_user, find_user_by_email, find_user_by_id, get_category_breakdown, get_db, get_top_category, get_total_spent, get_transaction_count, init_db, insert_expense, list_recent_transactions, seed_db
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-change-me"
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+EXPENSE_CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+
 
 
 # ------------------------------------------------------------------ #
@@ -35,6 +37,27 @@ def _months_ago(d: date, n: int) -> date:
         month += 12
         year -= 1
     return d.replace(year=year, month=month)
+
+
+def _validate_expense_form(amount_raw, category, date_val):
+    """Validate expense form inputs. Returns (error_message, cleaned_amount)."""
+    amount = None
+    try:
+        amount = float(amount_raw)
+        if amount <= 0:
+            return "Please enter a positive amount.", None
+    except ValueError:
+        return "Please enter a valid numeric amount.", None
+
+    if category not in EXPENSE_CATEGORIES:
+        return "Please select a valid category.", None
+
+    try:
+        datetime.strptime(date_val, "%Y-%m-%d")
+    except ValueError:
+        return "Please enter a valid date.", None
+
+    return None, amount
 
 
 # ------------------------------------------------------------------ #
@@ -132,7 +155,15 @@ def privacy():
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
+@app.route("/analytics")
+def analytics():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    return render_template("analytics.html")
+
+
 @app.route("/logout")
+
 def logout():
     session.clear()
     return redirect(url_for("login"))
@@ -143,8 +174,8 @@ def inject_user():
     user_id = session.get("user_id")
     if user_id:
         user = find_user_by_id(user_id)
-        return {"current_user": user}
-    return {"current_user": None}
+        return {"current_user": user, "EXPENSE_CATEGORIES": EXPENSE_CATEGORIES}
+    return {"current_user": None, "EXPENSE_CATEGORIES": EXPENSE_CATEGORIES}
 
 
 @app.route("/profile")
@@ -217,9 +248,47 @@ def profile():
     return render_template("profile.html", **profile_data)
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("login"))
+
+    context = {"error": None, "form_data": {}}
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount") or ""
+        category = request.form.get("category") or ""
+        date_val = request.form.get("date") or ""
+        description = (request.form.get("description") or "").strip()
+
+        error, amount = _validate_expense_form(amount_raw, category, date_val)
+
+        if error:
+            flash(error, "error")
+            context["error"] = error
+            context["form_data"] = {
+                "amount": amount_raw,
+                "category": category,
+                "date": date_val,
+                "description": description,
+            }
+            return render_template("add_expense.html", **context)
+
+        # Success: Insert into DB
+        insert_expense(
+            user_id=user_id,
+            amount=amount,
+            category=category,
+            date=date_val,
+            description=description if description else None,
+        )
+        flash("Expense saved successfully!", "success")
+        return redirect(url_for("profile"))
+
+    # GET request
+    context["form_data"] = {"date": date.today().isoformat()}
+    return render_template("add_expense.html", **context)
 
 
 @app.route("/expenses/<int:id>/edit")

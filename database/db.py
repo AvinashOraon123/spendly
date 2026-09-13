@@ -9,9 +9,12 @@ DB_PATH = os.path.join(
 )
 
 
-def get_db():
-    """Return a SQLite connection with row factory + FK enforcement on."""
-    conn = sqlite3.connect(DB_PATH)
+def get_db(path=None):
+    """Return a SQLite connection with row factory + FK enforcement on.
+
+    If `path` is provided, use it instead of the default DB_PATH.
+    """
+    conn = sqlite3.connect(path or DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -276,6 +279,20 @@ def get_category_breakdown(
             breakdown.append({"name": name, "total": total, "percent": percent})
 
         return breakdown
+    finally:
+        conn.close()
+
+
+def insert_expense(user_id: int, amount: float, category: str, date: str, description: str | None):
+    """Insert a new expense. Returns new expense's id."""
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, date, description),
+        )
+        conn.commit()
+        return cur.lastrowid
     finally:
         conn.close()
 
